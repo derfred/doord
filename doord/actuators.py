@@ -36,9 +36,12 @@ class PerleProtocol(Telnet):
     prompt = ""
     buffer = ""
 
-    def __init__(self, perle_actuator):
+    def __init__(self, perle_actuator, user, password, relay):
         Telnet.__init__(self)
         self.perle_actuator = perle_actuator
+        self.user = user
+        self.password = password
+        self.relay = relay
 
     def write(self, command):
         """docstring for issue_command"""
@@ -67,7 +70,7 @@ class PerleProtocol(Telnet):
         if data.find("Login:") == -1:
             logger.error("PerleActuator", "got unexpected input in state WaitForUser: %s" % data)
             return "Done"
-        self.write('admin')
+        self.write(self.user)
         self.prompt = "Password:"
         return "WaitForPassword"
 
@@ -75,12 +78,12 @@ class PerleProtocol(Telnet):
         if data.find("Password:") == -1:
             logger.error("PerleActuator", "got unexpected input in state WaitForPassword: %s" % data)
             return "Done"
-        self.write('superuser\r\n')
+        self.write(self.password + '\r\n')
         self.prompt = "DS1 D2R2#"
         return "WaitForActivation"
 
     def handle_WaitForActivation(self, data):
-        self.write('iochannel r1 output activate')
+        self.write('iochannel %s output activate' % self.relay)
         return "WaitForIssueActivationConfirmation"
 
     def handle_WaitForIssueActivationConfirmation(self, data):
@@ -88,10 +91,10 @@ class PerleProtocol(Telnet):
         return "WaitForActivationConfirmation"
 
     def handle_WaitForActivationConfirmation(self, data):
-        if not any_line_matches(r'^R1.+Active', data):
+        if not any_line_matches('^%s.+Active' % self.relay.upper(), data):
             logger.error("PerleActuator", "Relay not active after activation!")
             return "Done"
-        self.write('iochannel r1 output deactivate')
+        self.write('iochannel %s output deactivate' % self.relay)
         return "WaitForIssueDeactivationConfirmation"
 
     def handle_WaitForIssueDeactivationConfirmation(self, data):
@@ -99,7 +102,7 @@ class PerleProtocol(Telnet):
         return "WaitForDeactivationConfirmation"
     
     def handle_WaitForDeactivationConfirmation(self, data):
-        if not any_line_matches(r'^R1.+Inactive', data):
+        if not any_line_matches('^%s.+Inactive' % self.relay.upper(), data):
             logger.error("PerleActuator", "Relay not inactive after deactivation!")
             return "Done"
         self.write('logout')
@@ -112,7 +115,7 @@ class PerleActuator(Actuator):
         self.port = config['port']
         self.user = config['user']
         self.password = config['password']
-        self.actuation_length = config.get('actuation_length', 2)
+        self.relay = config.get("relay", "r1")
         self.d = None
 
     def operate(self):
@@ -120,7 +123,7 @@ class PerleActuator(Actuator):
             logger.log("PerleActuator", "operated while in activation cycle")
             return
         logger.log("PerleActuator", "opening door")
-        c = ClientCreator(reactor, PerleProtocol, self)
+        c = ClientCreator(reactor, PerleProtocol, self, self.user, self.password, self.relay)
         c.connectTCP(self.ip, self.port)
 
         self.d = defer.Deferred()
