@@ -80,11 +80,18 @@ class PerleProtocol(Telnet):
             return "Done"
         self.write(self.password + '\r\n')
         self.prompt = "DS1 D2R2#"
-        return "WaitForActivation"
+        return "WaitForIssueLoginCheck"
 
-    def handle_WaitForActivation(self, data):
-        self.write('iochannel %s output activate' % self.relay)
-        return "WaitForIssueActivationConfirmation"
+    def handle_WaitForIssueLoginCheck(self, data):
+         self.write('show iochannel status')
+         return "WaitForLoginCheck"
+
+     def handle_WaitForLoginCheck(self, data):
+         if not any_line_matches('^%s.+Inactive' % self.relay.upper(), data):
+             logger.error("PerleActuator", "Relay active on login!")
+             return "Done"
+         self.write('iochannel %s output activate' % self.relay)
+         return "WaitForIssueActivationConfirmation"
 
     def handle_WaitForIssueActivationConfirmation(self, data):
         self.write('show iochannel status')
