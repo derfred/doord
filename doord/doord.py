@@ -24,7 +24,6 @@ class DoorD(object):
 
     # health monitoring interface
     def check_reported_health(self):
-        print "hier"
         """query all modules for their reported health, that is mainly the heartbeat monitoring"""
         for reader in self.readers:
             health = reader.report_health()
@@ -93,6 +92,7 @@ doord = DoorD(serviceCollection)
 doord.add_reader(readers.GeminiReader, { "port": 6320 })
 doord.add_reader(readers.GeminiReader, { "port": 6321 })
 doord.add_reader(readers.TCPConnectionReader, {  })
+doord.add_reader(readers.WebInterfaceReader, {  })
 doord.add_authenticator(authenticators.AlwaysAuthenticator)
 doord.set_actuator(actuators.PerleActuator, { 'ip': '192.168.1.3', 'port': 23, 'user': 'admin', 'password': 'superuser' })
 
