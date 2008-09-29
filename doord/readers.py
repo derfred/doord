@@ -1,6 +1,8 @@
 from twisted.internet.protocol import DatagramProtocol, Protocol, Factory
 from twisted.internet import reactor, defer
 from twisted.application import internet, service
+from twisted.web import server, resource
+
 import time, logger
 
 class Reader(service.Service):
@@ -35,6 +37,30 @@ class Reader(service.Service):
         """callback to check with the components health. This is supposed to do an actual check and may return a Defer"""
         return defer.succeed(True)
 
+# a very simple web interface to opening the door
+class WebInterfaceResource(resource.Resource):
+    isLeaf = True
+    def __init__(self, reader):
+        self.reader = reader
+
+    def render_GET(self, request):
+        return "<html><form action='' method='POST'><input type='submit' value='Open door'></form></html>"
+
+    def render_POST(self, request):
+        self.reader.open_door()
+        request.redirect("/")
+        return ""
+
+class WebInterfaceReader(Reader):
+    def __init__(self, config = {}):
+        self.port = config.get('port', 8080)
+        self.doord = config['doord']
+        internet.TCPServer(self.port, server.Site(WebInterfaceResource(self))).setServiceParent(self.doord.getServiceCollection())
+
+    def open_door(self):
+        self.doord.handle_input(self, "")
+
+# this is a debug Reader
 class TCPConnectionReaderProtocol(Protocol):
     def connectionMade(self):
         self.factory.owner.have_connection()
@@ -52,6 +78,7 @@ class TCPConnectionReader(Reader):
     def have_connection(self):
         self.doord.handle_input(self, "")
 
+# this is Reader for the Gemini2k X1010IP RFID reader
 class GeminiReader(Reader, DatagramProtocol):
     def __init__(self, config = {}):
         self.doord = config['doord']
