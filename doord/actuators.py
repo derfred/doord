@@ -86,7 +86,7 @@ class PerleProtocol(Telnet):
          self.write('show iochannel status')
          return "WaitForLoginCheck"
 
-     def handle_WaitForLoginCheck(self, data):
+    def handle_WaitForLoginCheck(self, data):
          if not any_line_matches('^%s.+Inactive' % self.relay.upper(), data):
              logger.error("PerleActuator", "Relay active on login!")
              return "Done"
