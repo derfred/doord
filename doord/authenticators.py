@@ -1,9 +1,6 @@
-#from ldaptor.protocols.ldap import ldapclient, ldapsyntax, ldapconnector, distinguishedname
-#from ldaptor import ldapfilter
+from twisted.internet import defer, reactor, threads
 
-from twisted.internet import defer, reactor
-
-import logger
+import logger, imp, os.path
 
 class Authenticator(object):
     def __init__(self, config=None):
@@ -35,3 +32,34 @@ class LDAPAuthenticator(object):
 class AlwaysAuthenticator(Authenticator):
     def authenticate(self, token):
         return defer.succeed(True)
+
+
+class ThreadedPythonAuthenticator(Authenticator):
+    def __init__(self, config={}):
+        self.kwargs = config.get("kwargs", {})
+
+        if config.has_key("file"):
+            module_name = os.path.basename(config["file"]).replace(".py", "")
+            dir_name = os.path.dirname(config["file"])
+            fp, filename, description = imp.find_module(module_name, [dir_name])
+        else:
+            module_name = config["module"]
+            fp, filename, description = imp.find_module(config["module"])
+
+        try:
+            module = imp.load_module(module_name, fp, filename, description)
+            self.method = getattr(module, config["method"])
+        finally:
+            # Since we may exit via an exception, close fp explicitly.
+            if fp:
+                fp.close()
+
+    def do_authenticate(self, token):
+        try:
+            return self.method(token, **self.kwargs)
+        except Exception, e:
+            return "error"
+
+    def authenticate(self, token):
+        return threads.deferToThread(self.do_authenticate, token)
+
