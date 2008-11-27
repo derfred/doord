@@ -31,7 +31,7 @@ class LDAPAuthenticator(object):
 
 class AlwaysAuthenticator(Authenticator):
     def authenticate(self, token):
-        return defer.succeed(True)
+        return defer.succeed("success")
 
 
 class ThreadedPythonAuthenticator(Authenticator):

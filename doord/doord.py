@@ -9,9 +9,13 @@ from twisted.application import internet, service
 class DoorD(object):
     def __init__(self, serviceCollection):
         """the constructor"""
-        self.readers = []
-        self.actuator = None
-        self.authenticators = []
+        self.readers = {}
+        self.authenticators = {}
+        self.actuators = {}
+
+        self.reader_to_authenticator = {}
+        self.reader_to_actuator = {}
+
         self.serviceCollection = serviceCollection
 
         # do health report check every 5 seconds
@@ -50,17 +54,27 @@ class DoorD(object):
         return self.serviceCollection
 
     # configuration interface
-    def add_reader(self, reader_class, config = {}):
-        """append a new reader to the list of input readers"""
-        self.readers.append(reader_class(dict(config, doord=self)))
+    def add_reader(self, name, reader):
+        """this adds a reader by the given name, will cause the reader to be started"""
+        #self.readers.append(reader)
 
-    def set_actuator(self, actuator_class, config = {}):
-        """append a new actuator to the list of available actuators"""
-        self.actuator = actuator_class(config)
+    def link_authenticator_to_reader(self, reader, authenticator):
+        """link the authenticator to the reader, authenticators are queried in order of addition"""
+        if self.reader_to_authenticator.has_key(reader):
+            self.reader_to_authenticator[reader].append(authenticator)
+        else:
+            self.reader_to_authenticator[reader] = [authenticator]
 
-    def add_authenticator(self, authenticator_class, config = {}):
-        """append a new authenticator to the list of available authenticators"""
-        self.authenticators.append(authenticator_class(config))
+    def add_authenticator(self, name, s={}):
+        pass
+
+    def set_actuator(self, name, d):
+        pass
+
+    def link_actuator_to_reader(self, reader, actuator):
+        """link an actuator to a reader, which will cause it to operate if authentication is successful"""
+        self.reader_to_actuator[reader] = actuator
+
 
     # app logic
     def handle_input(self, reader, token):
@@ -73,7 +87,7 @@ class DoorD(object):
                                             ).addErrback(lambda e: self.handle_authentication_error(reader, e))
 
     def handle_authentication_response(self, reader, response):
-        if response:
+        if response == "success":
             self.actuator.operate().addCallback(self.indicate_success)
         else:
             reader.indicate_failure()
@@ -88,11 +102,14 @@ class DoorD(object):
 application = service.Application('doord')
 serviceCollection = service.IServiceCollection(application)
 
+authenticators.ThreadedPythonAuthenticator({ "file": "/Users/frederikfix/ds/rfidAuthenticator.py", "method": "check_access", "kwargs": { "hubId": 12, "resourceId": 12} })
+
 doord = DoorD(serviceCollection)
 doord.add_reader(readers.GeminiReader, { "port": 6320 })
 doord.add_reader(readers.GeminiReader, { "port": 6321 })
 doord.add_reader(readers.TCPConnectionReader, {  })
 doord.add_reader(readers.WebInterfaceReader, {  })
 doord.add_authenticator(authenticators.AlwaysAuthenticator)
+doord.add_authenticator(authenticators.ThreadedPythonAuthenticator, { "file": "/Users/frederikfix/ds/rfidAuthenticator.py", "method": "check_access", "kwargs": { "hubId": 12, "resourceId": 12} })
 doord.set_actuator(actuators.PerleActuator, { 'ip': '192.168.1.3', 'port': 23, 'user': 'admin', 'password': 'superuser' })
 
