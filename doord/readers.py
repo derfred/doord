@@ -69,6 +69,7 @@ class TCPConnectionReaderProtocol(Protocol):
 class TCPConnectionReader(Reader):
     def __init__(self, config = {}):
         self.port = config.get('port', 1717)
+        self.token = config.get('token', "")
         self.doord = config['doord']
         factory = Factory()
         factory.protocol = TCPConnectionReaderProtocol
@@ -76,7 +77,7 @@ class TCPConnectionReader(Reader):
         internet.TCPServer(self.port, factory).setServiceParent(self.doord.getServiceCollection())
 
     def have_connection(self):
-        self.doord.handle_input(self, "")
+        self.doord.handle_input(self, self.token)
 
 # this is Reader for the Gemini2k X1010IP RFID reader
 class GeminiReader(Reader, DatagramProtocol):
