@@ -119,7 +119,7 @@ class PerleProtocol(Telnet):
 class PerleActuator(Actuator):
     def __init__(self, config={}):
         self.ip = config['ip']
-        self.port = config['port']
+        self.port = config.get('port', 23)
         self.user = config['user']
         self.password = config['password']
         self.relay = config.get("relay", "r1")

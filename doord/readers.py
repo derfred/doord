@@ -8,9 +8,6 @@ import time, logger
 class Reader(service.Service):
     def __init__(self, config=None):
         """The constructor, takes a config object"""
-        if not config.has_key('direction'):
-            raise Exception, 'Reader require a direction config'
-
         self.config = config
 
     def register_listener(self):
@@ -52,13 +49,13 @@ class WebInterfaceResource(resource.Resource):
         return ""
 
 class WebInterfaceReader(Reader):
-    def __init__(self, config = {}):
+    def __init__(self, pipeline, config = {}):
         self.port = config.get('port', 8080)
-        self.doord = config['doord']
-        internet.TCPServer(self.port, server.Site(WebInterfaceResource(self))).setServiceParent(self.doord.getServiceCollection())
+        self.pipeline = pipeline
+        internet.TCPServer(self.port, server.Site(WebInterfaceResource(self))).setServiceParent(self.pipeline.getServiceCollection())
 
     def open_door(self):
-        self.doord.handle_input(self, "")
+        self.pipeline.handle_input("")
 
 # this is a debug Reader
 class TCPConnectionReaderProtocol(Protocol):
@@ -67,26 +64,26 @@ class TCPConnectionReaderProtocol(Protocol):
         self.transport.loseConnection()
 
 class TCPConnectionReader(Reader):
-    def __init__(self, config = {}):
+    def __init__(self, pipeline, config = {}):
         self.port = config.get('port', 1717)
         self.token = config.get('token', "")
-        self.doord = config['doord']
+        self.pipeline = pipeline
         factory = Factory()
         factory.protocol = TCPConnectionReaderProtocol
         factory.owner = self
-        internet.TCPServer(self.port, factory).setServiceParent(self.doord.getServiceCollection())
+        internet.TCPServer(self.port, factory).setServiceParent(self.pipeline.getServiceCollection())
 
     def have_connection(self):
-        self.doord.handle_input(self, self.token)
+        self.pipeline.handle_input(self.token)
 
 # this is Reader for the Gemini2k X1010IP RFID reader
 class GeminiReader(Reader, DatagramProtocol):
-    def __init__(self, config = {}):
-        self.doord = config['doord']
+    def __init__(self, pipeline, config = {}):
+        self.pipeline = pipeline
         self.port = config.get('port', 6320)
         self.min_interval = config.get('min_interval', 0.5)
         self.hb_warn_interval = config.get('hb_warn_interval', 15)
-        internet.UDPServer(self.port, self).setServiceParent(self.doord.getServiceCollection())
+        internet.UDPServer(self.port, self).setServiceParent(self.pipeline.getServiceCollection())
 
         self.last_read = 0
         self.last_hb = 0
@@ -103,7 +100,7 @@ class GeminiReader(Reader, DatagramProtocol):
             self.last_hb = time.time()
         elif data[:2] == "SN":
             # this is a actual card read
-            self.doord.handle_input(self, data[2:10])
+            self.pipeline.handle_input(data[2:10])
             self.last_read = time.time()
         else:
             # unidentified message, log it for reference
