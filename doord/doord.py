@@ -23,11 +23,16 @@ class DoorD(object):
     # health monitoring interface
     def check_reported_health(self):
         """query all modules for their reported health, that is mainly the heartbeat monitoring"""
+        error = False
         for p in self.pipelines:
             health = p.report_health()
             if health != True:
                 logger.error("ReportedHealthCheck", "Pipeline %s reported bad health: %s" % (p, health))
- 
+
+        if not error:
+            logger.log("ReportedHealthCheck", "no errors")
+
+
     def check_actual_health(self):
         """query all modules to initiate a component check"""
         pass
