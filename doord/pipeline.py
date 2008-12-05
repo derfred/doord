@@ -22,6 +22,7 @@ class Pipeline(object):
         if options.has_key('authenticator'):
             self.authenticator = getattr(authenticators, options['authenticator']['type'])(options['authenticator'])
         self.actuator = getattr(actuators, options['actuator']['type'])(options['actuator'])
+        self.permissive = options.get("permissive", False)
 
     # health checks
     def report_health(self):
@@ -57,7 +58,7 @@ class Pipeline(object):
             self.handle_authentication_response("success", token)
 
     def handle_authentication_response(self, response, token):
-        if response == "success":
+        if response == "success" or self.permissive:
             self.actuator.operate().addCallback(self.indicate_success)
         else:
             self.reader.indicate_failure()

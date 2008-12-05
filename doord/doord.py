@@ -49,6 +49,7 @@ class DoorD(object):
         self.pipelines = map(lambda c: pipeline.Pipeline(self, c[0], c[1]), config.items())
 
 
+
 application = service.Application('doord')
 serviceCollection = service.IServiceCollection(application)
 
