@@ -51,6 +51,7 @@ class Pipeline(object):
 
     def authenticate_token(self, token):
         if self.authenticator:
+            logger.log("Pipeline %s" % self.name, "authenticating token %s" % token)
             self.authenticator.authenticate(token
                                             ).addCallback(lambda r: self.handle_authentication_response(r, token),
                                             ).addErrback(self.handle_authentication_error)
@@ -59,8 +60,10 @@ class Pipeline(object):
 
     def handle_authentication_response(self, response, token):
         if response == "success" or self.permissive:
+            logger.log("Pipeline %s" % self.name, "opening door for authentication result %s" % response)
             self.actuator.operate().addCallback(self.indicate_success)
         else:
+            logger.log("Pipeline %s" % self.name, "refusing entry to token %s" % token)
             self.reader.indicate_failure()
 
     def handle_authentication_error(self, error):
