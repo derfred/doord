@@ -51,8 +51,8 @@ class WebInterfaceResource(resource.Resource):
 
 class WebInterfaceReader(Reader):
     def __init__(self, pipeline, config = {}):
+        Reader.__init__(self, pipeline, config)
         self.port = config.get('port', 8080)
-        self.pipeline = pipeline
         internet.TCPServer(self.port, server.Site(WebInterfaceResource(self))).setServiceParent(self.pipeline.getServiceCollection())
 
     def open_door(self):
@@ -66,9 +66,9 @@ class TCPConnectionReaderProtocol(Protocol):
 
 class TCPConnectionReader(Reader):
     def __init__(self, pipeline, config = {}):
+        Reader.__init__(self, pipeline, config)
         self.port = config.get('port', 1717)
         self.token = config.get('token', "")
-        self.pipeline = pipeline
         factory = Factory()
         factory.protocol = TCPConnectionReaderProtocol
         factory.owner = self
@@ -80,7 +80,7 @@ class TCPConnectionReader(Reader):
 # this is Reader for the Gemini2k X1010IP RFID reader
 class GeminiReader(Reader, DatagramProtocol):
     def __init__(self, pipeline, config = {}):
-        self.pipeline = pipeline
+        Reader.__init__(self, pipeline, config)
         self.port = config.get('port', 6320)
         self.min_interval = config.get('min_interval', 0.5)
         self.hb_warn_interval = config.get('hb_warn_interval', 15)
