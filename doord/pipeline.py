@@ -61,7 +61,9 @@ class Pipeline(object):
     def handle_authentication_response(self, response, token):
         if response == "success" or self.permissive:
             logger.log("Pipeline %s" % self.name, "opening door for authentication result %s" % response)
-            self.actuator.operate().addCallback(self.indicate_success)
+            deferred = self.actuator.operate()
+            if deferred:
+                deferred.addCallback(self.indicate_success)
         else:
             logger.log("Pipeline %s" % self.name, "refusing entry to token %s" % token)
             self.reader.indicate_failure()
