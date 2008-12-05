@@ -6,13 +6,14 @@ from twisted.web import server, resource
 import time, logger
 
 class Reader(service.Service):
-    def __init__(self, config=None):
+    def __init__(self, pipeline, config=None):
         """The constructor, takes a config object"""
         self.config = config
+        self.pipeline = pipeline
 
-    def register_listener(self):
-        """This sets up the Listener to wait for card swipes"""
-        pass
+    def handle_input(self, token):
+        """Notify the owning pipeline about a access request"""
+        self.pipeline.handle_input(token)
 
     def indicate_success(self):
         """Indicate to the user that authorization was successful"""
@@ -55,7 +56,7 @@ class WebInterfaceReader(Reader):
         internet.TCPServer(self.port, server.Site(WebInterfaceResource(self))).setServiceParent(self.pipeline.getServiceCollection())
 
     def open_door(self):
-        self.pipeline.handle_input("")
+        self.handle_input("")
 
 # this is a debug Reader
 class TCPConnectionReaderProtocol(Protocol):
@@ -74,7 +75,7 @@ class TCPConnectionReader(Reader):
         internet.TCPServer(self.port, factory).setServiceParent(self.pipeline.getServiceCollection())
 
     def have_connection(self):
-        self.pipeline.handle_input(self.token)
+        self.handle_input(self.token)
 
 # this is Reader for the Gemini2k X1010IP RFID reader
 class GeminiReader(Reader, DatagramProtocol):
@@ -94,13 +95,12 @@ class GeminiReader(Reader, DatagramProtocol):
         return "no heartbeat in %d seconds (warn interval %d)" % (time.time() - self.last_hb, self.hb_warn_interval)
 
     def datagramReceived(self, data, (host, port)):
-        #logger.log("GeminiReader", "received %r from %s:%d" % (data, host, port))
         if data[:2] == "HB":
             # this is a heartbeat message
             self.last_hb = time.time()
         elif data[:2] == "SN":
             # this is a actual card read
-            self.pipeline.handle_input(data[2:10])
+            self.handle_input(data[2:10])
             self.last_read = time.time()
         else:
             # unidentified message, log it for reference
