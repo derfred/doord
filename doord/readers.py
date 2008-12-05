@@ -95,6 +95,11 @@ class GeminiReader(Reader, DatagramProtocol):
         return "no heartbeat in %d seconds (warn interval %d)" % (time.time() - self.last_hb, self.hb_warn_interval)
 
     def datagramReceived(self, data, (host, port)):
+        # honour the minimum delta between reads, this is to prevent activation during operation cycle errors
+        # in case the card is picked up multiple times
+        if self.last_read != 0 and time.time() - self.last_read < self.min_interval:
+            return
+
         if data[:2] == "HB":
             # this is a heartbeat message
             self.last_hb = time.time()
