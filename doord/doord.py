@@ -4,6 +4,7 @@ sys.path.append(".")
 import logger, yaml, pipeline
 from twisted.internet import defer, reactor, task
 from twisted.application import internet, service
+from twisted.python import usage
 
 
 class DoorD(object):
@@ -16,7 +17,7 @@ class DoorD(object):
         self.reported_health_check = internet.TimerService(5, self.check_reported_health)
         self.reported_health_check.setServiceParent(serviceCollection)
  
-        # do actual health check every 59 seconds, so as not to overleave with the above (to often...)
+        # do actual health check every 59 seconds, so as not to overleave with the above (too often...)
         self.actual_health_check = internet.TimerService(59, self.check_actual_health)
         self.actual_health_check.setServiceParent(serviceCollection)
  
@@ -47,6 +48,7 @@ class DoorD(object):
         """this will load the configuration from the file"""
         config = yaml.load(open(filename).read())
         self.pipelines = map(lambda c: pipeline.Pipeline(self, c[0], c[1]), config.items())
+
 
 
 
