@@ -45,7 +45,6 @@ class PerleProtocol(Telnet):
 
     def write(self, command):
         """docstring for issue_command"""
-        logger.log("PerleActuator", "> %s" % command)
         self._write(command + '\r\n')
 
     def applicationDataReceived(self, data):
@@ -53,8 +52,6 @@ class PerleProtocol(Telnet):
         self.buffer += data
         if self.prompt != "" and self.buffer.find(self.prompt) == -1:
             return
-
-        logInboundConversation("PerleActuator", self.buffer)
 
         mode = getattr(self, "handle_%s" % self.mode)(self.buffer)
 
@@ -129,7 +126,6 @@ class PerleActuator(Actuator):
         if self.d != None:
             logger.log("PerleActuator", "operated while in activation cycle")
             return
-        logger.log("PerleActuator", "opening door")
         c = ClientCreator(reactor, PerleProtocol, self, self.user, self.password, self.relay)
         c.connectTCP(self.ip, self.port)
 
