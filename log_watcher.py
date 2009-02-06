@@ -30,8 +30,8 @@ class Watcher(DatagramProtocol):
 	smtp_port = 25
 
 
-    def datagramReceived(data, (host, port)):
-        process_line(line)
+	def datagramReceived(data, (host, port)):
+		process_line(line)
 
 	def process_line(line):
 		"""process a single log entry"""
@@ -93,10 +93,10 @@ class Watcher(DatagramProtocol):
 	def send_log_to_admins(time_since_last_call):
 		notify_admins_with('recurrent_in_error_state', self.log)
 		self.log = []
-		time_to_next_call = if time_since_last_call == self.maximum_interval:
-								self.maximum_interval
-							else:
-								time_since_last_call * 2
+		#time_to_next_call = if time_since_last_call == self.maximum_interval:
+		#						self.maximum_interval
+		#					else:
+		#						time_since_last_call * 2
 		#self.timer.callback(time_to_next_call){send_log_to_admins(time_to_next_call)}
 
 reactor.listenUDP(514, Watcher())
