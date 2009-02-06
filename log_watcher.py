@@ -18,7 +18,8 @@ class Watcher(DatagramProtocol):
 	}
 	regexes = [
 		"\[-\] ReportedHealthCheck no errors",
-		"\[-\] Pipeline .* opening door for authentication result success"
+		"\[-\] Pipeline .* opening door for authentication result success",
+		"\[-\] PerleActuator operated while in activation cycle"
 	]
 
 	log_file = "/var/log/doord.log"
