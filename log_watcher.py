@@ -5,7 +5,8 @@ from twisted.internet.defer import Deferred
 from twisted.mail.smtp import ESMTPSenderFactory
 from email.MIMEText import MIMEText
 
-import re
+import re, StringIO
+
 
 class Watcher(DatagramProtocol):
 
@@ -15,13 +16,12 @@ class Watcher(DatagramProtocol):
 		'transition_to_error_state': ["[doord] An error has occured", "Offending log message:\n%s"],
 		'recurrent_in_error_state': ["[doord] An error is persistent", "log messages:\n%s"]
 	}
-	regexes = ["^(\d{4}-\d{2}-\d{2}\ \d{2}:\d{2}:\d{2}\+\d{4}\ )(\[PerleProtocol,client]|\[-] PerleActuator .*|\[readers\.GeminiReader.*]\ |GeminiReader <readers.GeminiReader instance at )(.*)"]
+	regexes = [
+		"\[-\] ReportedHealthCheck no errors",
+		"\[-\] Pipeline .* opening door for authentication result success"
+	]
 
 	log_file = "/var/log/doord.log"
-
-	minimum_interval = 2
-	maximum_interval = 20
-
 
 	smtp_sender = "doord@stemcel.co.uk"
 	smtp_user = ""
@@ -30,67 +30,81 @@ class Watcher(DatagramProtocol):
 	smtp_port = 25
 
 
-	def datagramReceived(data, (host, port)):
-		process_line(line)
+	minimum_interval = 2
+	maximum_interval = 20
+	log = []
 
-	def process_line(line):
+	in_error_state = False
+
+	def datagramReceived(self, data, (host, port)):
+		self.process_line(data[4:])
+
+	def process_line(self, line):
 		"""process a single log entry"""
-		queue_error_log(line)
-		if error(line) and not self.in_error_state:
-			transition_to_error_state()
-		elif not error(line) and self.in_error_state:
-			transition_to_log_state()
+		self.queue_error_log(line)
 
-	def queue_error_log(line):
+		if self.error(line[16:]) and not self.in_error_state:
+			print "have error %s" % line
+			self.transition_to_error_state(line)
+		elif not self.error(line[16:]) and self.in_error_state:
+			print "end error"
+			self.transition_to_log_state(line)
+
+	def queue_error_log(self, line):
 		output = file(self.log_file, "a")
-		output.write(line)
+		output.write(line + "\n")
 		output.close()
 
 	# state logic
-	def error(line):
+	def error(self, line):
 		"""eval whether a given line is an log entry representing an error state"""
-		for regex in self.regexes:
-			if re.match(regex, "abcdef"):
-				return True
-		return False
+		if not "doord" in line:
+			return False
 
-	def transition_to_error_state(line):
-		notify_admins_with('transition_to_error_state', line)
-		self.in_error_state = true
+		line = line[7:]
+
+		for regex in self.regexes:
+			if re.match(regex, line):
+				return False
+		return True
+
+	def transition_to_error_state(self, line):
+		self.notify_admins_with('transition_to_error_state', line)
+		self.in_error_state = True
 		#self.timer.callback(self.minimum_interval){send_log_to_admins(self.minimum_interval)}
 
-	def transition_to_log_state(line):
-		notify_admins_with('transition_to_log_state', {'line': line, 'log': self.log})
-		self.in_error_state = false
+	def transition_to_log_state(self, line):
+		self.notify_admins_with('transition_to_log_state', {'line': line, 'log': self.log})
+		self.in_error_state = False
 
 
 	# notification logic
 	def notify_admins_with(self, notification_type, args):
-		template_text = self.templates[notification_type]
-		for recipient in self.recipient:
-			self.send_email_to(template_text, args, recipient)
+		template_text = self.template_texts[notification_type]
+		for receipient in self.receipients:
+			self.send_email_to(template_text, args, receipient)
 
-	def send_email_to(template, args, receipient):
+	def send_email_to(self, template, args, receipient):
 		msg = MIMEText(template[1] % args)
-		msg["Subject"] = template[0] % args
+		msg["Subject"] = template[0]
 		msg["From"] = "doord"
 		msg["To"] = receipient
-		return sendmail(self.mail_host, "doord", [receipient], msg.as_string())
+
 		resultDeferred = Deferred()
 
 		senderFactory = ESMTPSenderFactory(
 			self.smtp_user,
 			self.smtp_password,
 			self.smtp_sender,
-			recipient,
-			msg.as_string(),
+			receipient,
+			StringIO.StringIO(msg.as_string()),
 			resultDeferred)
 
 		reactor.connectTCP(self.smtp_host, self.smtp_port, senderFactory)
 
 		return resultDeferred
 
-	def send_log_to_admins(time_since_last_call):
+	def send_log_to_admins(self, time_since_last_call):
 		notify_admins_with('recurrent_in_error_state', self.log)
 		self.log = []
 		#time_to_next_call = if time_since_last_call == self.maximum_interval:
