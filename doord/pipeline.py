@@ -12,6 +12,9 @@ class Pipeline(object):
 
         self.load_config(options)
 
+    def __str__(self):
+        return "Pipeline<%s>" % self.name
+
     # twisted support stuff
     def getServiceCollection(self):
         """this allows the service dependency facilities of Twisted do their thing"""
