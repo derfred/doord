@@ -5,7 +5,7 @@ from twisted.internet.defer import Deferred
 from twisted.mail.smtp import ESMTPSenderFactory
 from email.MIMEText import MIMEText
 
-import re, StringIO
+import re, StringIO, time
 
 
 class Watcher(DatagramProtocol):
@@ -14,6 +14,7 @@ class Watcher(DatagramProtocol):
 	template_texts = {
 		'transition_to_log_state': ["[doord] Error has been fixed", "Last line:\n%(line)s\n\nRemainder of log:\n%(log)s"],
 		'transition_to_error_state': ["[doord] An error has occured", "Offending log message:\n%s"],
+		'transition_to_dead_state': ["[doord] Missed Hearbeat", "The monitored instances has not been heard from for %d seconds"],
 		'recurrent_in_error_state': ["[doord] An error is persistent", "log messages:\n%s"]
 	}
 	regexes = [
@@ -33,15 +34,23 @@ class Watcher(DatagramProtocol):
 
 	minimum_interval = 2
 	maximum_interval = 20
+	heart_beat_interval = 120
 	log = []
 
 	in_error_state = False
+	last_read = 0
+
+	def __init__(self):
+		"""setup the Watcher class, and initialize the heartbeat monitor"""
+		self.heartbeat_check()
 
 	def datagramReceived(self, data, (host, port)):
 		self.process_line(data[4:])
 
 	def process_line(self, line):
 		"""process a single log entry"""
+		self.last_read = time.time()
+		print line
 		self.queue_error_log(line)
 
 		if self.error(line[16:]) and not self.in_error_state:
@@ -56,6 +65,15 @@ class Watcher(DatagramProtocol):
 		output.write(line + "\n")
 		output.close()
 
+	# hearbeat monitor
+	def heartbeat_check(self):
+		"""this is called every minute to see if the monitored doord instance is still alive"""
+		print "heartbeat_check"
+		if not self.in_error_state and self.last_read != 0 and time.time() - self.last_read > self.heart_beat_interval:
+			print "missed heartbeat"
+			self.transition_to_dead_state()
+		reactor.callLater(60, self.heartbeat_check)
+
 	# state logic
 	def error(self, line):
 		"""eval whether a given line is an log entry representing an error state"""
@@ -68,6 +86,10 @@ class Watcher(DatagramProtocol):
 			if re.match(regex, line):
 				return False
 		return True
+
+	def transition_to_dead_state(self):
+		self.notify_admins_with('transition_to_dead_state', time.time() - self.last_read)
+		self.in_error_state = True
 
 	def transition_to_error_state(self, line):
 		self.notify_admins_with('transition_to_error_state', line)
