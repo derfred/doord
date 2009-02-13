@@ -28,6 +28,7 @@ class DoorD(object):
         for p in self.pipelines:
             health = p.report_health()
             if health != True:
+                error = True
                 logger.error("ReportedHealthCheck", "Pipeline %s reported bad health: %s" % (p, health))
 
         if not error:
