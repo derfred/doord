@@ -1,6 +1,7 @@
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred
+from twisted.application import internet, service
 
 from twisted.mail.smtp import ESMTPSenderFactory
 from email.MIMEText import MIMEText
@@ -137,5 +138,8 @@ class Watcher(DatagramProtocol):
 		#						time_since_last_call * 2
 		#self.timer.callback(time_to_next_call){send_log_to_admins(time_to_next_call)}
 
-reactor.listenUDP(514, Watcher())
-reactor.run()
+application = service.Application('doord')
+serviceCollection = service.IServiceCollection(application)
+internet.UDPServer(514, Watcher()).setServiceParent(serviceCollection)
+
+
