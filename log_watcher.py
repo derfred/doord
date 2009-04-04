@@ -6,7 +6,7 @@ from twisted.application import internet, service
 from twisted.mail.smtp import ESMTPSenderFactory
 from email.MIMEText import MIMEText
 
-import re, StringIO, time
+import re, StringIO, time, os
 
 
 class Watcher(DatagramProtocol):
@@ -33,6 +33,8 @@ class Watcher(DatagramProtocol):
 	smtp_host = ""
 	smtp_port = 25
 
+	twitter_user = ""
+	twitter_password = ""
 
 	minimum_interval = 2
 	maximum_interval = 20
@@ -109,6 +111,10 @@ class Watcher(DatagramProtocol):
 		for receipient in self.receipients:
 			self.send_email_to(template_text, args, receipient)
 
+		if self.twitter_notification_enabled();
+			self.send_twitter_notification(template_text, args)
+
+	# email logic
 	def send_email_to(self, template, args, receipient):
 		msg = MIMEText(template[1] % args)
 		msg["Subject"] = template[0]
@@ -137,6 +143,16 @@ class Watcher(DatagramProtocol):
 		#					else:
 		#						time_since_last_call * 2
 		#self.timer.callback(time_to_next_call){send_log_to_admins(time_to_next_call)}
+
+	# twitter logic
+	def twitter_notification_enabled(self):
+		return self.twitter_user != ""
+
+	def send_twitter_notification(self, template, args):
+		# append the subject with the content and limit it to 140 chars
+		update = (template[0] + (template[1] % args))[:140]
+		command = "curl --basic --user %s:%s --data status=\"%s\" http://twitter.com/statuses/update.xml" % (self.twitter_user, self.twitter_password, update)
+		os.popen(command)
 
 application = service.Application('doord')
 serviceCollection = service.IServiceCollection(application)
