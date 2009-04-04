@@ -55,7 +55,12 @@ class Watcher(DatagramProtocol):
 		"""process a single log entry"""
 		self.last_read = time.time()
 		print line
+		# we want to log everything from the box
 		self.queue_error_log(line)
+
+		# but have the notification only action on doord mesags
+		if not "doord" in line:
+			return False
 
 		if self.error(line[16:]) and not self.in_error_state:
 			print "have error %s" % line
@@ -81,9 +86,6 @@ class Watcher(DatagramProtocol):
 	# state logic
 	def error(self, line):
 		"""eval whether a given line is an log entry representing an error state"""
-		if not "doord" in line:
-			return False
-
 		line = line[7:]
 
 		for regex in self.regexes:
