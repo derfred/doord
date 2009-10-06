@@ -100,14 +100,12 @@ class GeminiReader(Reader, DatagramProtocol):
         if self.last_read != 0 and time.time() - self.last_read < self.min_interval:
             return
 
-        if data[:2] == "HB":
-            # this is a heartbeat message
-            self.last_hb = time.time()
-        elif data[:2] == "SN":
+        self.last_hb = time.time()
+        if data[:2] == "SN":
             # this is a actual card read
             self.handle_input(data[2:10])
             self.last_read = time.time()
-        else:
+        elif data[:2] == "HB":
+            # Heartbeat messages start with a HB prefix
             # unidentified message, log it for reference
             logger.warn("GeminiReader", "unidentified packet received: %r from %s:%d" % (data, host, port))
-
