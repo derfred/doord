@@ -11,6 +11,13 @@ class Reader(service.Service):
         self.config = config
         self.pipeline = pipeline
 
+    def get_config(self, key, default=None):
+        """Return the config item determined by key, and return default it it doesn't exist"""
+        if not self.config:
+            return default
+
+        return self.config.get(key, default)
+
     def handle_input(self, token):
         """Notify the owning pipeline about a access request"""
         self.pipeline.handle_input(token)

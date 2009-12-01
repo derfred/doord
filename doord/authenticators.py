@@ -7,6 +7,13 @@ class Authenticator(object):
         """sets up the authenticator with an optional config object"""
         self.config = config
 
+    def get_config(self, key, default=None):
+        """Return the config item determined by key, and return default it it doesn't exist"""
+        if not self.config:
+            return default
+
+        return self.config.get(key, default)
+
     def authenticate(self, token):
         """query the database to see if user it authorized, return True, False or raises an Exception"""
         pass

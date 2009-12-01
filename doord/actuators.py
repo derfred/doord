@@ -13,6 +13,13 @@ class Actuator(object):
         """the constructor, with an optional config object"""
         self.config = config
 
+    def get_config(self, key, default=None):
+        """Return the config item determined by key, and return default it it doesn't exist"""
+        if not self.config:
+            return default
+
+        return self.config.get(key, default)
+
     def operate(self):
         """operate the actuator to open the door"""
         pass
