@@ -31,21 +31,32 @@ class Pipeline(object):
     def report_health(self):
         health = self.reader.report_health()
         if health != True:
-            return "%s: %s" % (self.reader, health)
+            log_message = "%s: %s" % (self.reader, health)
+            self.call_health_check_failback(self.reader, log_message)
+            return log_message
 
         if self.authenticator:
             health = self.authenticator.report_health()
             if health != True:
-                return "%s: %s" % (self.authenticator, health)
+                log_message = "%s: %s" % (self.authenticator, health)
+                self.call_health_check_failback(self.authenticator, log_message)
+                return log_message
 
-        health = self.reader.report_health()
+        health = self.actuator.report_health()
         if health != True:
-            return "%s: %s" % (self.reader, health)
+            log_message = "%s: %s" % (self.actuator, health)
+            self.call_health_check_failback(self.actuator, log_message)
+            return log_message
 
         return True
 
     def check_health(self):
         return defer.succeed(True)
+
+    def call_health_check_failback(self, object, health):
+        command = object.get_config("health_check_failback", None)
+        if command:
+            subprocess.Popen(command, shell=True, env={ log_message: health })
 
     # app logic
     def handle_input(self, token):
