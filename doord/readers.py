@@ -58,7 +58,12 @@ class WebInterfaceReader(Reader):
     def open_door(self):
         self.handle_input("")
 
+
 # this is a debug Reader
+#
+#   This will listen on the specified port (default 1717) for any incoming TCP connection and trigger the door opening
+#   To trigger this do: telnet 12.23.34.45 1717
+#
 class TCPConnectionReaderProtocol(Protocol):
     def connectionMade(self):
         self.factory.owner.have_connection()
